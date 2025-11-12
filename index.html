@@ -127,19 +127,145 @@
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxObpofTa0Cy1fvq9yVo-nGhRBMpKWSE9hu-2Ib1KqsscXwc2qnug1lxvpCS2clkMvjqA/exec';
 
     function triggerUpload(type) {
-      document.getElementById(type).click();
+    document.getElementById(type).click();
+  }
+
+  function renderThumbnails() {
+    ['bol', 'freight'].forEach(type => {
+      const container = document.getElementById(type + '-thumbnails');
+      container.innerHTML = '';
+      files[type].forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const thumb = document.createElement('div');
+          thumb.className = 'thumb';
+          thumb.draggable = true;
+          thumb.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', `${type},${index}`);
+          thumb.ondragover = (ev) => ev.preventDefault();
+          thumb.ondrop = (ev) => {
+            ev.preventDefault();
+            const [srcType, srcIndex] = ev.dataTransfer.getData('text/plain').split(',');
+            if (srcType === type) {
+              const [removed] = files[type].splice(srcIndex, 1);
+              files[type].splice(index, 0, removed);
+              renderThumbnails();
+            }
+          };
+
+          thumb.innerHTML = `
+            <img src="${e.target.result}" />
+            <span class="remove" onclick="removeFile('${type}', ${index})">×</span>
+          `;
+          container.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+      });
+      document.getElementById(type + '-status').innerHTML = 
+        files[type].length ? `✓ ${files[type].length} file${files[type].length > 1 ? 's' : ''}` 
+                          : type === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
+    });
+  }
+
+  window.removeFile = function(type, index) {
+    files[type].splice(index, 1);
+    renderThumbnails();
+  };
+
+  ['bol', 'freight'].forEach(type => {
+    document.getElementById(type).onchange = (e) => {
+      const newFiles = Array.from(e.target.files);
+      files[type].push(...newFiles);
+      document.getElementById(type + '-btn').classList.add('active');
+      renderThumbnails();
+    };
+  });
+
+  function submitAll() {
+    const company = document.getElementById('company').value;
+    const loadNum = document.getElementById('loadNum').value.trim();
+    const bolNum = document.getElementById('bolNum').value.trim();
+    const puCity = document.getElementById('puCity').value.trim();
+    const puState = document.getElementById('puState').value;
+    const delCity = document.getElementById('delCity').value.trim();
+    const delState = document.getElementById('delState').value;
+
+    // FORCED ENTRY LOGIC
+    if (!company) return alert('Please select a company.');
+    if (!loadNum && !bolNum && (!puCity || !puState) && (!delCity || !delState)) {
+      return alert('Enter Load # OR BOL # OR both Pickup and Delivery (city + state).');
+    }
+    if (files.bol.length === 0 && files.freight.length === 0) {
+      return alert('Upload at least one photo.');
     }
 
-    ['bol', 'freight'].forEach(type => {
-      document.getElementById(type).onchange = (e) => {
-        const newFiles = Array.from(e.target.files);
-        files[type].push(...newFiles);
-        const btn = e.target.parentElement;
-        btn.classList.add('active');
-        const count = files[type].length;
-        document.getElementById(type + '-status').innerHTML = `✓ ${count} file${count > 1 ? 's' : ''}`;
-      };
+    const formData = { company, loadNum, bolNum, puCity, puState, delCity, delState, bolFiles: [], freightFiles: [] };
+
+    const promises = [];
+    files.bol.forEach(f => promises.push(fileToBase64(f).then(b64 => formData.bolFiles.push({name: f.name, data: b64}))));
+    files.freight.forEach(f => promises.push(fileToBase64(f).then(b64 => formData.freightFiles.push({name: f.name, data: b64}))));
+
+    Promise.all(promises).then(() => {
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === 'success') {
+          showToast(`${company}: Load ${loadNum || bolNum} saved!`);
+          resetForm();
+        } else {
+          alert('Upload failed: ' + (res.message || 'Try again.'));
+        }
+      })
+      .catch(() => alert('No internet. Will retry when online.'));
     });
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    Object.assign(toast.style, {
+      position:'fixed', bottom:'20px', left:'50%', transform:'translateX(-50%)',
+      background:'#10b981', color:'white', padding:'16px 36px', borderRadius:'50px',
+      fontWeight:'700', boxShadow:'0 10px 30px rgba(16,185,129,0.5)', zIndex:'10000',
+      animation:'slideUp 0.6s', fontSize:'1rem'
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  function resetForm() {
+    document.getElementById('company').value = '';
+    document.getElementById('loadNum').value = '';
+    document.getElementById('bolNum').value = '';
+    document.getElementById('puCity').value = '';
+    document.getElementById('delCity').value = '';
+    files.bol = []; files.freight = [];
+    ['bol', 'freight'].forEach(t => {
+      document.getElementById(t + '-btn').classList.remove('active');
+      document.getElementById(t + '-thumbnails').innerHTML = '';
+      renderThumbnails();
+    });
+  }
+
+  function toggleTheme(dark) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js');
+  }
+</script>
 
     function submitAll() {
       const company = document.getElementById('company').value;
@@ -228,3 +354,4 @@
 </body>
 
 </html>
+
