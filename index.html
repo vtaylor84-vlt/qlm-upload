@@ -156,7 +156,7 @@
 
   <script>
     const files = { bol: [], freight: [] };
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzUQ0LKxgTg_0kEdZxo9wv1lKkealWW3CPW0LRl9QVQ6sR-J_uauGPlyqPTg8nRyYyeGQ/exec'; // ← PASTE YOUR URL HERE
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzUQ0LKxgTg_0kEdZxo9wv1lKkealWW3CPW0LRl9QVQ6sR-J_uauGPlyqPTg8nRyYyeGQ/exec';
 
     function triggerUpload(type) {
       document.getElementById(type).click();
@@ -241,16 +241,19 @@
           body: JSON.stringify(formData),
           headers: { 'Content-Type': 'application/json' }
         })
-        .then(r => r.json())
-        .then(res => {
-          if (res.status === 'success') {
-            showToast(`${company}: Load ${loadNum || bolNum} saved!`);
-            resetForm();
-          } else {
-            alert('Upload failed: ' + (res.message || 'Try again.'));
-          }
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
         })
-        .catch(() => alert('No internet. Will retry when online.'));
+        .then(res => {
+          console.log("Backend response:", res);
+          showToast(`${company}: Load ${loadNum || bolNum} saved!`);
+          resetForm();
+        })
+        .catch(err => {
+          console.error("Upload error:", err);
+          alert('Upload failed: ' + err.message + '. Check internet and try again.');
+        });
       });
     }
 
@@ -299,5 +302,3 @@
   </script>
 </body>
 </html>
-
-
