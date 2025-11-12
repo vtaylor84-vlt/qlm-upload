@@ -44,13 +44,17 @@
     .submit-btn::before { content:""; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); transition:0.6s; }
     .submit-btn:hover::before { left:100%; }
     @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+    .thumb-container { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .thumb { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 2px solid rgba(0,229,255,0.4); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb .remove { position: absolute; top: 2px; right: 2px; background: #ef4444; color: white; width: 20px; height: 20px; border-radius: 50%; font-weight: bold; font-size: 14px; text-align: center; line-height: 18px; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="top-bar">
       <div class="company-selector">
-        <select id="company">
+        <select id="company" required>
           <option value="" disabled selected>Select Company</option>
           <option value="Greenleaf Xpress">Greenleaf Xpress</option>
           <option value="BST Expedite">BST Expedite</option>
@@ -88,7 +92,20 @@
         <div class="input-wrapper">
           <label>State</label>
           <select id="puState" class="state-select">
-            <option>TX</option><option>CA</option><option>FL</option><option>IL</option><option>GA</option><option>NY</option>
+            <option value="">--</option>
+            <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+            <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+            <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+            <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+            <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+            <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+            <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+            <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+            <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+            <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+            <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+            <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+            <option>WI</option><option>WY</option>
           </select>
         </div>
       </div>
@@ -100,7 +117,20 @@
         <div class="input-wrapper">
           <label>State</label>
           <select id="delState" class="state-select">
-            <option>IA</option><option>OH</option><option>NY</option><option>GA</option><option>IL</option><option>TX</option>
+            <option value="">--</option>
+            <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+            <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+            <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+            <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+            <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+            <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+            <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+            <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+            <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+            <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+            <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+            <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+            <option>WI</option><option>WY</option>
           </select>
         </div>
       </div>
@@ -118,173 +148,88 @@
           <input type="file" id="freight" accept="image/*,video/*" capture="environment" multiple style="display:none" />
         </div>
       </div>
+      <div class="thumb-container" id="bol-thumbnails"></div>
+      <div class="thumb-container" id="freight-thumbnails"></div>
       <button class="submit-btn" onclick="submitAll()">Submit & Keep Trucking!</button>
     </div>
   </div>
 
   <script>
     const files = { bol: [], freight: [] };
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxObpofTa0Cy1fvq9yVo-nGhRBMpKWSE9hu-2Ib1KqsscXwc2qnug1lxvpCS2clkMvjqA/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxObpofTa0Cy1fvq9yVo-nGhRBMpKWSE9hu-2Ib1KqsscXwc2qnug1lxvpCS2clkMvjqA/exec'; // ← PASTE YOUR URL HERE
 
     function triggerUpload(type) {
-    document.getElementById(type).click();
-  }
+      document.getElementById(type).click();
+    }
 
-  function renderThumbnails() {
-    ['bol', 'freight'].forEach(type => {
-      const container = document.getElementById(type + '-thumbnails');
-      container.innerHTML = '';
-      files[type].forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const thumb = document.createElement('div');
-          thumb.className = 'thumb';
-          thumb.draggable = true;
-          thumb.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', `${type},${index}`);
-          thumb.ondragover = (ev) => ev.preventDefault();
-          thumb.ondrop = (ev) => {
-            ev.preventDefault();
-            const [srcType, srcIndex] = ev.dataTransfer.getData('text/plain').split(',');
-            if (srcType === type) {
-              const [removed] = files[type].splice(srcIndex, 1);
-              files[type].splice(index, 0, removed);
-              renderThumbnails();
-            }
+    function renderThumbnails() {
+      ['bol', 'freight'].forEach(type => {
+        const container = document.getElementById(type + '-thumbnails');
+        container.innerHTML = '';
+        files[type].forEach((file, index) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'thumb';
+            thumb.draggable = true;
+            thumb.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', `${type},${index}`);
+            thumb.ondragover = (ev) => ev.preventDefault();
+            thumb.ondrop = (ev) => {
+              ev.preventDefault();
+              const [srcType, srcIndex] = ev.dataTransfer.getData('text/plain').split(',');
+              if (srcType === type) {
+                const [removed] = files[type].splice(srcIndex, 1);
+                files[type].splice(index, 0, removed);
+                renderThumbnails();
+              }
+            };
+
+            thumb.innerHTML = `
+              <img src="${e.target.result}" />
+              <span class="remove" onclick="removeFile('${type}', ${index})">X</span>
+            `;
+            container.appendChild(thumb);
           };
-
-          thumb.innerHTML = `
-            <img src="${e.target.result}" />
-            <span class="remove" onclick="removeFile('${type}', ${index})">×</span>
-          `;
-          container.appendChild(thumb);
-        };
-        reader.readAsDataURL(file);
+          reader.readAsDataURL(file);
+        });
+        document.getElementById(type + '-status').innerHTML = 
+          files[type].length ? `✓ ${files[type].length} file${files[type].length > 1 ? 's' : ''}` 
+                            : type === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
       });
-      document.getElementById(type + '-status').innerHTML = 
-        files[type].length ? `✓ ${files[type].length} file${files[type].length > 1 ? 's' : ''}` 
-                          : type === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
-    });
-  }
+    }
 
-  window.removeFile = function(type, index) {
-    files[type].splice(index, 1);
-    renderThumbnails();
-  };
-
-  ['bol', 'freight'].forEach(type => {
-    document.getElementById(type).onchange = (e) => {
-      const newFiles = Array.from(e.target.files);
-      files[type].push(...newFiles);
-      document.getElementById(type + '-btn').classList.add('active');
+    window.removeFile = function(type, index) {
+      files[type].splice(index, 1);
       renderThumbnails();
     };
-  });
 
-  function submitAll() {
-    const company = document.getElementById('company').value;
-    const loadNum = document.getElementById('loadNum').value.trim();
-    const bolNum = document.getElementById('bolNum').value.trim();
-    const puCity = document.getElementById('puCity').value.trim();
-    const puState = document.getElementById('puState').value;
-    const delCity = document.getElementById('delCity').value.trim();
-    const delState = document.getElementById('delState').value;
-
-    // FORCED ENTRY LOGIC
-    if (!company) return alert('Please select a company.');
-    if (!loadNum && !bolNum && (!puCity || !puState) && (!delCity || !delState)) {
-      return alert('Enter Load # OR BOL # OR both Pickup and Delivery (city + state).');
-    }
-    if (files.bol.length === 0 && files.freight.length === 0) {
-      return alert('Upload at least one photo.');
-    }
-
-    const formData = { company, loadNum, bolNum, puCity, puState, delCity, delState, bolFiles: [], freightFiles: [] };
-
-    const promises = [];
-    files.bol.forEach(f => promises.push(fileToBase64(f).then(b64 => formData.bolFiles.push({name: f.name, data: b64}))));
-    files.freight.forEach(f => promises.push(fileToBase64(f).then(b64 => formData.freightFiles.push({name: f.name, data: b64}))));
-
-    Promise.all(promises).then(() => {
-      fetch(WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify(formData),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(r => r.json())
-      .then(res => {
-        if (res.status === 'success') {
-          showToast(`${company}: Load ${loadNum || bolNum} saved!`);
-          resetForm();
-        } else {
-          alert('Upload failed: ' + (res.message || 'Try again.'));
-        }
-      })
-      .catch(() => alert('No internet. Will retry when online.'));
+    ['bol', 'freight'].forEach(type => {
+      document.getElementById(type).onchange = (e) => {
+        const newFiles = Array.from(e.target.files);
+        files[type].push(...newFiles);
+        document.getElementById(type + '-btn').classList.add('active');
+        renderThumbnails();
+      };
     });
-  }
-
-  function fileToBase64(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function showToast(msg) {
-    const toast = document.createElement('div');
-    toast.textContent = msg;
-    Object.assign(toast.style, {
-      position:'fixed', bottom:'20px', left:'50%', transform:'translateX(-50%)',
-      background:'#10b981', color:'white', padding:'16px 36px', borderRadius:'50px',
-      fontWeight:'700', boxShadow:'0 10px 30px rgba(16,185,129,0.5)', zIndex:'10000',
-      animation:'slideUp 0.6s', fontSize:'1rem'
-    });
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-
-  function resetForm() {
-    document.getElementById('company').value = '';
-    document.getElementById('loadNum').value = '';
-    document.getElementById('bolNum').value = '';
-    document.getElementById('puCity').value = '';
-    document.getElementById('delCity').value = '';
-    files.bol = []; files.freight = [];
-    ['bol', 'freight'].forEach(t => {
-      document.getElementById(t + '-btn').classList.remove('active');
-      document.getElementById(t + '-thumbnails').innerHTML = '';
-      renderThumbnails();
-    });
-  }
-
-  function toggleTheme(dark) {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  }
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js');
-  }
-</script>
 
     function submitAll() {
       const company = document.getElementById('company').value;
       const loadNum = document.getElementById('loadNum').value.trim();
-      if (!company || !loadNum || (files.bol.length === 0 && files.freight.length === 0)) {
-        alert('Select Company, enter Load #, and upload at least one file.');
-        return;
+      const bolNum = document.getElementById('bolNum').value.trim();
+      const puCity = document.getElementById('puCity').value.trim();
+      const puState = document.getElementById('puState').value;
+      const delCity = document.getElementById('delCity').value.trim();
+      const delState = document.getElementById('delState').value;
+
+      if (!company) return alert('Please select a company.');
+      if (!loadNum && !bolNum && (!puCity || !puState) && (!delCity || !delState)) {
+        return alert('Enter Load # OR BOL # OR both Pickup and Delivery (city + state).');
+      }
+      if (files.bol.length === 0 && files.freight.length === 0) {
+        return alert('Upload at least one photo.');
       }
 
-      const formData = {
-        company, loadNum,
-        bolNum: document.getElementById('bolNum').value,
-        puCity: document.getElementById('puCity').value,
-        puState: document.getElementById('puState').value,
-        delCity: document.getElementById('delCity').value,
-        delState: document.getElementById('delState').value,
-        bolFiles: [],
-        freightFiles: []
-      };
+      const formData = { company, loadNum, bolNum, puCity, puState, delCity, delState, bolFiles: [], freightFiles: [] };
 
       const promises = [];
       files.bol.forEach(f => promises.push(fileToBase64(f).then(b64 => formData.bolFiles.push({name: f.name, data: b64}))));
@@ -299,10 +244,10 @@
         .then(r => r.json())
         .then(res => {
           if (res.status === 'success') {
-            showToast(`${company}: Load ${loadNum} saved!`);
+            showToast(`${company}: Load ${loadNum || bolNum} saved!`);
             resetForm();
           } else {
-            alert('Upload failed: ' + res.message);
+            alert('Upload failed: ' + (res.message || 'Try again.'));
           }
         })
         .catch(() => alert('No internet. Will retry when online.'));
@@ -339,7 +284,8 @@
       files.bol = []; files.freight = [];
       ['bol', 'freight'].forEach(t => {
         document.getElementById(t + '-btn').classList.remove('active');
-        document.getElementById(t + '-status').innerHTML = t === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
+        document.getElementById(t + '-thumbnails').innerHTML = '';
+        renderThumbnails();
       });
     }
 
@@ -352,6 +298,4 @@
     }
   </script>
 </body>
-
 </html>
-
