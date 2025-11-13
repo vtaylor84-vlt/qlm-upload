@@ -139,13 +139,13 @@
           <img src="https://img.icons8.com/fluency/48/ffffff/document.png" class="icon"/>
           <div class="label">BOL Photos</div>
           <div class="status" id="bol-status">Tap to add (PDFs OK)</div>
-          <input type="file" id="bol" accept="image/*,application/pdf" capture="environment" multiple style="display:none" />
+          <input type="file" id="bol" accept="image/*,image/heic,application/pdf" capture="environment" multiple style="display:none" />
         </div>
         <div class="upload-btn" id="freight-btn" onclick="triggerUpload('freight')">
           <img src="https://img.icons8.com/fluency/48/ffffff/delivery.png" class="icon"/>
           <div class="label">Freight Photos</div>
           <div class="status" id="freight-status">Loaded trailer</div>
-          <input type="file" id="freight" accept="image/*,video/*" capture="environment" multiple style="display:none" />
+          <input type="file" id="freight" accept="image/*,image/heic,video/*" capture="environment" multiple style="display:none" />
         </div>
       </div>
       <div class="thumb-container" id="bol-thumbnails"></div>
@@ -156,7 +156,7 @@
 
   <script>
     const files = { bol: [], freight: [] };
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw1Yg7fe6QrF0yeflrTJ08mUuK3CHmTaPXZmjrgT1HwUCD1d1eJWKxcjFLIcA4GMzkU0g/exec'; // ← PASTE YOUR URL HERE
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw1Yg7fe6QrF0yeflrTJ08mUuK3CHmTaPXZmjrgT1HwUCD1d1eJWKxcjFLIcA4GMzkU0g/exec';
 
     function triggerUpload(type) {
       document.getElementById(type).click();
@@ -184,17 +184,26 @@
               }
             };
 
+            // Use e.target.result for thumbnail display. If not an image (like PDF), 
+            // you might want to show a generic icon, but for now, we rely on browser capabilities.
+            const isImage = file.type.startsWith('image/'); 
+            const imgSource = isImage ? e.target.result : 
+                              file.type === 'application/pdf' ? 'https://img.icons8.com/fluency/48/ffffff/pdf.png' : '';
+            
             thumb.innerHTML = `
-              <img src="${e.target.result}" />
+              <img src="${imgSource}" alt="${file.name}" style="${isImage ? '' : 'object-fit: contain; padding: 10px; filter: invert(1);'}"/>
               <span class="remove" onclick="removeFile('${type}', ${index})">X</span>
             `;
             container.appendChild(thumb);
           };
+          
+          // Check if it's a PDF. PDFs can take a lot of memory, but we read the file
+          // to get the base64 data for the script, so this is generally safe.
           reader.readAsDataURL(file);
         });
         document.getElementById(type + '-status').innerHTML = 
           files[type].length ? `✓ ${files[type].length} file${files[type].length > 1 ? 's' : ''}` 
-                            : type === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
+                             : type === 'bol' ? 'Tap to add (PDFs OK)' : 'Loaded trailer';
       });
     }
 
@@ -228,6 +237,11 @@
       if (files.bol.length === 0 && files.freight.length === 0) {
         return alert('Upload at least one photo.');
       }
+      
+      // Disable button while processing
+      const submitButton = document.querySelector('.submit-btn');
+      submitButton.disabled = true;
+      submitButton.textContent = 'Uploading... Please wait.';
 
       const formData = { company, loadNum, bolNum, puCity, puState, delCity, delState, bolFiles: [], freightFiles: [] };
 
@@ -250,7 +264,14 @@
             alert('Upload failed: ' + (res.message || 'Try again.'));
           }
         })
-        .catch(() => alert('No internet. Will retry when online.'));
+        .catch((error) => {
+            console.error("Fetch Error:", error); // Log the specific error
+            alert('No internet. Will retry when online.');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit & Keep Trucking!';
+        });
       });
     }
 
@@ -281,22 +302,26 @@
       document.getElementById('bolNum').value = '';
       document.getElementById('puCity').value = '';
       document.getElementById('delCity').value = '';
+      // Reset state fields to the first option
+      document.getElementById('puState').selectedIndex = 0; 
+      document.getElementById('delState').selectedIndex = 0;
       files.bol = []; files.freight = [];
       ['bol', 'freight'].forEach(t => {
         document.getElementById(t + '-btn').classList.remove('active');
         document.getElementById(t + '-thumbnails').innerHTML = '';
-        renderThumbnails();
+        // Note: renderThumbnails() is called below but no harm calling here too.
       });
+      renderThumbnails(); 
     }
 
     function toggleTheme(dark) {
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     }
 
+    // Initialize theme based on preference/localStorage if you add that later
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js');
     }
   </script>
 </body>
 </html>
-
