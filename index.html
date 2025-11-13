@@ -156,7 +156,8 @@
 
   <script>
     const files = { bol: [], freight: [] };
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz_LATR-W93Y-ymZNc84xvMhsusznyuWUoZRgpbfoppS5VKGtRSCOLPKobchbEfqgUMxg/exec';
+    // *** NEW URL PROVIDED BY USER ***
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx6q4oQaLK4tijWK-Lq84Dvajh65at00BEO4LSYTa00s4b61bm5vO8wanvD2oBn2QeMKA/exec';
 
     function triggerUpload(type) {
       document.getElementById(type).click();
@@ -188,7 +189,7 @@
             // you might want to show a generic icon, but for now, we rely on browser capabilities.
             const isImage = file.type.startsWith('image/'); 
             const imgSource = isImage ? e.target.result : 
-                              file.type === 'application/pdf' ? 'https://img.icons8.com/fluency/48/ffffff/pdf.png' : '';
+                                file.type === 'application/pdf' ? 'https://img.icons8.com/fluency/48/ffffff/pdf.png' : '';
             
             thumb.innerHTML = `
               <img src="${imgSource}" alt="${file.name}" style="${isImage ? '' : 'object-fit: contain; padding: 10px; filter: invert(1);'}"/>
@@ -253,7 +254,8 @@
         fetch(WEB_APP_URL, {
           method: 'POST',
           body: JSON.stringify(formData),
-          headers: { 'Content-Type': 'application/json' }
+          // *** FIX: Changed header to text/plain to bypass Apps Script CORS pre-flight issue ***
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         })
         .then(r => r.json())
         .then(res => {
@@ -266,7 +268,8 @@
         })
         .catch((error) => {
             console.error("Fetch Error:", error); // Log the specific error
-            alert('No internet. Will retry when online.');
+            // This alert will now only show if there is a real network/DNS issue
+            alert('Upload failed. Check your network or try again.'); 
         })
         .finally(() => {
             submitButton.disabled = false;
@@ -325,4 +328,3 @@
   </script>
 </body>
 </html>
-
